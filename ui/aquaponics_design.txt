@@ -1,0 +1,277 @@
+================================================================================
+智能鱼菜共生系统 - Nextion/TJC 屏幕设计规格
+Smart Aquaponics System - Nextion/TJC Screen Design Specification
+================================================================================
+
+Screen Model: ATF UART Serial Screen (480x272)
+Protocol: Nextion/TJC Compatible
+Baud Rate: 9600
+
+================================================================================
+PAGE 0: Main Dashboard (主界面)
+================================================================================
+
+BACKGROUND:
+  Color: 1024 (Dark Blue: #000080)
+  
+--------------------------------------------------------------------------------
+COMPONENT LIST:
+--------------------------------------------------------------------------------
+
+[t0] - Title Header
+  Type: Text
+  Position: x=20, y=5
+  Size: w=440, h=35
+  Font: 2 (32pt)
+  Text: "智能鱼菜共生 Aquaponics"
+  Background Color: 1024 (Dark Blue)
+  Font Color: 65535 (White)
+  Horizontal Alignment: Center
+  
+--------------------------------------------------------------------------------
+
+[tTemp] - Temperature Label
+  Type: Text
+  Position: x=30, y=50
+  Size: w=180, h=20
+  Font: 1 (24pt)
+  Text: "水温 TEMP"
+  Background Color: 1024 (Dark Blue)
+  Font Color: 65535 (White)
+  
+[t1] - Temperature Value
+  Type: Text
+  Position: x=30, y=75
+  Size: w=180, h=55
+  Font: 3 (48pt)
+  Text: "--.-°C"
+  Background Color: 1024 (Dark Blue)
+  Font Color: 65535 (White)
+  Horizontal Alignment: Center
+  Border: 1px, Color 65535
+
+--------------------------------------------------------------------------------
+
+[tLevel] - Water Level Label
+  Type: Text
+  Position: x=260, y=50
+  Size: w=180, h=20
+  Font: 1 (24pt)
+  Text: "水位 LEVEL"
+  Background Color: 1024 (Dark Blue)
+  Font Color: 65535 (White)
+
+[t2] - Water Level Value
+  Type: Text
+  Position: x=260, y=75
+  Size: w=180, h=55
+  Font: 2 (32pt)
+  Text: "检测中..."
+  Background Color: 1024 (Dark Blue)
+  Font Color: 65535 (White)
+  Horizontal Alignment: Center
+  Border: 1px, Color 65535
+
+--------------------------------------------------------------------------------
+
+[tPump] - Pump Status Label
+  Type: Text
+  Position: x=30, y=140
+  Size: w=420, h=20
+  Font: 1 (24pt)
+  Text: "水泵状态 PUMP STATUS"
+  Background Color: 1024 (Dark Blue)
+  Font Color: 65535 (White)
+  Horizontal Alignment: Center
+
+[t3] - Pump Status Value
+  Type: Text
+  Position: x=30, y=165
+  Size: w=420, h=40
+  Font: 2 (32pt)
+  Text: "已停止 OFF"
+  Background Color: 1024 (Dark Blue)
+  Font Color: 65535 (White)
+  Horizontal Alignment: Center
+  Border: 1px, Color 65535
+
+--------------------------------------------------------------------------------
+
+[b0] - Pump Control Button (Touch Area)
+  Type: Button (Dual-state)
+  Position: x=90, y=210
+  Size: w=300, h=40
+  Font: 2 (32pt)
+  Text: "启动水泵 START"
+  Background Color (Normal): 2016 (Green)
+  Background Color (Pressed): 1024 (Dark Blue)
+  Font Color: 65535 (White)
+  Border: 2px, Color 65535
+  
+  Touch Press Event Code:
+    printh 65 00 01 01
+  
+  Touch Release Event Code:
+    printh 65 00 01 00
+
+--------------------------------------------------------------------------------
+
+[t4] - System Message
+  Type: Text
+  Position: x=20, y=255
+  Size: w=440, h=15
+  Font: 0 (16pt)
+  Text: "系统就绪 System Ready"
+  Background Color: 1024 (Dark Blue)
+  Font Color: 2016 (Green)
+  Horizontal Alignment: Center
+
+================================================================================
+FONT REQUIREMENTS:
+================================================================================
+
+Font 0: 16pt - System messages
+Font 1: 24pt - Labels
+Font 2: 32pt - Status values, buttons
+Font 3: 48pt - Temperature display
+
+All fonts must include:
+- ASCII characters (0x20-0x7E)
+- Chinese characters for:
+  智能鱼菜共生系统
+  水温水位水泵
+  安全危险警报
+  已停止运行中
+  检测启动
+  正常错误
+  请加水
+  温度过高过低
+
+================================================================================
+COLOR PALETTE (RGB565):
+================================================================================
+
+COLOR_BLACK      = 0       // #000000 - Background
+COLOR_DARK_BLUE  = 1024    // #000080 - Main background
+COLOR_BLUE       = 31      // #0000FF - Information
+COLOR_GREEN      = 2016    // #00FC00 - Safe/Normal
+COLOR_CYAN       = 2047    // #00FFFF - Pump running
+COLOR_RED        = 63488   // #F80000 - Danger/Alarm
+COLOR_ORANGE     = 64512   // #FFC000 - Warning
+COLOR_WHITE      = 65535   // #FFFFFF - Text
+
+================================================================================
+COMMAND REFERENCE:
+================================================================================
+
+Update Temperature:
+  t1.txt="25.3°C"
+  t1.pco=2016        // Green for normal
+  t1.pco=63488       // Red for warning
+
+Update Water Level:
+  t2.txt="安全 SAFE"
+  t2.pco=2016        // Green
+  t2.txt="危险! DANGER!"
+  t2.pco=63488       // Red
+
+Update Pump Status:
+  t3.txt="已停止 OFF"
+  t3.pco=65535       // White
+  t3.txt="运行中 5s"
+  t3.pco=2047        // Cyan
+
+Update Button:
+  b0.txt="启动水泵 START"
+  b0.txt="运行中 RUNNING"
+
+Update System Message:
+  t4.txt="系统就绪 System Ready"
+  t4.pco=2016        // Green
+  t4.txt="警报:请加水! ALARM:ADD WATER!"
+  t4.pco=63488       // Red
+
+================================================================================
+TOUCH EVENT FORMAT (for future touch screen):
+================================================================================
+
+Event received from screen:
+  0x65 [Page] [Component] [Event] 0xFF 0xFF 0xFF
+
+Example - Button b0 pressed:
+  0x65 0x00 0x01 0x01 0xFF 0xFF 0xFF
+
+Page: 0x00 (Page 0)
+Component: 0x01 (b0)
+Event: 0x01 (Press) / 0x00 (Release)
+
+================================================================================
+VISUAL MOCKUP (ASCII Art):
+================================================================================
+
+┌────────────────────────────────────────────────────────────────┐
+│░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░│
+│░░  ╔══════════════════════════════════════════════════════╗  ░░│
+│░░  ║      智能鱼菜共生 Smart Aquaponics                   ║  ░░│
+│░░  ╚══════════════════════════════════════════════════════╝  ░░│
+│░░                                                            ░░│
+│░░    ┌────────────────┐        ┌────────────────┐           ░░│
+│░░    │   水温 TEMP    │        │   水位 LEVEL   │           ░░│
+│░░    │                │        │                │           ░░│
+│░░    │    25.3°C      │        │   安全 SAFE    │           ░░│
+│░░    │   (GREEN)      │        │   (GREEN)      │           ░░│
+│░░    └────────────────┘        └────────────────┘           ░░│
+│░░                                                            ░░│
+│░░    ┌──────────────────────────────────────────┐           ░░│
+│░░    │         水泵状态 PUMP STATUS              │           ░░│
+│░░    │                                          │           ░░│
+│░░    │            已停止 OFF                    │           ░░│
+│░░    │            (WHITE)                       │           ░░│
+│░░    └──────────────────────────────────────────┘           ░░│
+│░░                                                            ░░│
+│░░    ╔══════════════════════════════════════════╗           ░░│
+│░░    ║     启动水泵 START PUMP    (GREEN BG)    ║           ░░│
+│░░    ╚══════════════════════════════════════════╝           ░░│
+│░░                                                            ░░│
+│░░    [ 系统就绪 System Ready ]  (GREEN TEXT)                ░░│
+│░░                                                            ░░│
+└────────────────────────────────────────────────────────────────┘
+
+Legend:
+░░ = Dark Blue Background (#000080)
+(GREEN) = Green text color
+(WHITE) = White text color
+(GREEN BG) = Green background button
+
+================================================================================
+STATE TRANSITIONS:
+================================================================================
+
+NORMAL STATE:
+  - Temperature: Green (22-26°C) or Orange (18-22, 26-28°C)
+  - Water Level: Green "安全 SAFE"
+  - Pump: White "已停止 OFF"
+  - Message: Green "系统就绪 System Ready"
+
+ALARM - NO WATER:
+  - Water Level: Red "危险! DANGER!"
+  - Pump: Forced OFF
+  - Message: Red "警报:请加水! ALARM:ADD WATER!"
+
+ALARM - TEMP HIGH:
+  - Temperature: Red (>28°C)
+  - Message: Orange "警告:温度过高! TEMP HIGH!"
+
+ALARM - TEMP LOW:
+  - Temperature: Red (<18°C)
+  - Message: Orange "警告:温度过低! TEMP LOW!"
+
+PUMP RUNNING:
+  - Pump: Cyan "运行中 5s" (countdown)
+  - Button: "运行中 RUNNING"
+  - Message: Cyan "水泵运行中 Pump Running"
+
+================================================================================
+END OF SPECIFICATION
+================================================================================
+
