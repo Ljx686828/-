@@ -1,0 +1,1023 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能鱼菜共生 - Smart Aquaponics Simulator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --color-bg-dark: #000814;
+            --color-bg-panel: #001d3d;
+            --color-accent-blue: #003566;
+            --color-safe: #00ff88;
+            --color-danger: #ff3366;
+            --color-warning: #ffaa00;
+            --color-cyan: #00d4ff;
+            --color-white: #ffffff;
+            --color-text-dim: #88a4c0;
+            --glow-safe: 0 0 20px rgba(0, 255, 136, 0.5);
+            --glow-danger: 0 0 20px rgba(255, 51, 102, 0.5);
+            --glow-cyan: 0 0 20px rgba(0, 212, 255, 0.5);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background: var(--color-bg-dark);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            background-image: 
+                radial-gradient(ellipse at 50% 0%, rgba(0, 53, 102, 0.4) 0%, transparent 60%),
+                radial-gradient(circle at 20% 80%, rgba(0, 212, 255, 0.1) 0%, transparent 40%),
+                radial-gradient(circle at 80% 90%, rgba(0, 255, 136, 0.08) 0%, transparent 40%);
+        }
+
+        .container {
+            max-width: 520px;
+            width: 100%;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 24px;
+            padding: 20px;
+            background: linear-gradient(135deg, var(--color-bg-panel) 0%, var(--color-accent-blue) 100%);
+            border-radius: 16px;
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--color-cyan), transparent);
+        }
+
+        .header h1 {
+            font-family: 'Orbitron', monospace;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--color-white);
+            text-shadow: 0 0 30px rgba(0, 212, 255, 0.5);
+            letter-spacing: 2px;
+        }
+
+        .header .subtitle {
+            font-size: 0.85rem;
+            color: var(--color-cyan);
+            margin-top: 4px;
+            font-family: 'Orbitron', monospace;
+            letter-spacing: 3px;
+        }
+
+        /* Main Display Panel - Simulating 480x272 screen */
+        .display-panel {
+            background: var(--color-bg-panel);
+            border-radius: 16px;
+            padding: 20px;
+            border: 2px solid var(--color-accent-blue);
+            box-shadow: 
+                inset 0 0 60px rgba(0, 0, 0, 0.5),
+                0 0 40px rgba(0, 53, 102, 0.3);
+            position: relative;
+        }
+
+        .display-panel::before {
+            content: 'DISPLAY SIMULATION';
+            position: absolute;
+            top: -10px;
+            left: 20px;
+            background: var(--color-bg-dark);
+            padding: 2px 12px;
+            font-size: 0.65rem;
+            color: var(--color-text-dim);
+            letter-spacing: 2px;
+            font-family: 'Orbitron', monospace;
+        }
+
+        /* Sensor Cards Grid */
+        .sensor-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .sensor-card {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 12px;
+            padding: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .sensor-card.warning {
+            border-color: var(--color-warning);
+            box-shadow: inset 0 0 30px rgba(255, 170, 0, 0.1);
+        }
+
+        .sensor-card.danger {
+            border-color: var(--color-danger);
+            box-shadow: inset 0 0 30px rgba(255, 51, 102, 0.2);
+            animation: pulse-danger 1s ease-in-out infinite;
+        }
+
+        @keyframes pulse-danger {
+            0%, 100% { box-shadow: inset 0 0 30px rgba(255, 51, 102, 0.2); }
+            50% { box-shadow: inset 0 0 50px rgba(255, 51, 102, 0.4); }
+        }
+
+        .sensor-label {
+            font-size: 0.75rem;
+            color: var(--color-text-dim);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 8px;
+        }
+
+        .sensor-value {
+            font-family: 'Orbitron', monospace;
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--color-safe);
+            text-shadow: var(--glow-safe);
+            transition: all 0.3s ease;
+        }
+
+        .sensor-value.warning {
+            color: var(--color-warning);
+            text-shadow: 0 0 20px rgba(255, 170, 0, 0.5);
+        }
+
+        .sensor-value.danger {
+            color: var(--color-danger);
+            text-shadow: var(--glow-danger);
+        }
+
+        .sensor-value.cyan {
+            color: var(--color-cyan);
+            text-shadow: var(--glow-cyan);
+        }
+
+        .sensor-unit {
+            font-size: 1rem;
+            color: var(--color-text-dim);
+        }
+
+        /* Pump Status Section */
+        .pump-section {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+        }
+
+        .pump-section.running {
+            border-color: var(--color-cyan);
+            box-shadow: inset 0 0 40px rgba(0, 212, 255, 0.15);
+        }
+
+        .pump-label {
+            font-size: 0.75rem;
+            color: var(--color-text-dim);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 8px;
+        }
+
+        .pump-status {
+            font-family: 'Orbitron', monospace;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--color-white);
+            transition: all 0.3s ease;
+        }
+
+        .pump-status.running {
+            color: var(--color-cyan);
+            text-shadow: var(--glow-cyan);
+        }
+
+        /* Control Button */
+        .pump-button {
+            width: 100%;
+            padding: 16px 32px;
+            font-family: 'Orbitron', monospace;
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: linear-gradient(135deg, #00aa55 0%, #00ff88 100%);
+            color: var(--color-bg-dark);
+            box-shadow: 0 4px 20px rgba(0, 255, 136, 0.3);
+            margin-bottom: 16px;
+        }
+
+        .pump-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 30px rgba(0, 255, 136, 0.5);
+        }
+
+        .pump-button:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .pump-button:disabled {
+            background: linear-gradient(135deg, #333 0%, #555 100%);
+            color: #888;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .pump-button.running {
+            background: linear-gradient(135deg, #0088aa 0%, #00d4ff 100%);
+            box-shadow: 0 4px 20px rgba(0, 212, 255, 0.3);
+        }
+
+        /* System Message */
+        .system-message {
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+            font-size: 0.9rem;
+            color: var(--color-safe);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .system-message.warning {
+            color: var(--color-warning);
+            border-color: rgba(255, 170, 0, 0.3);
+        }
+
+        .system-message.danger {
+            color: var(--color-danger);
+            border-color: rgba(255, 51, 102, 0.5);
+            animation: blink 0.5s ease-in-out infinite;
+        }
+
+        .system-message.cyan {
+            color: var(--color-cyan);
+            border-color: rgba(0, 212, 255, 0.3);
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        /* Simulator Controls */
+        .simulator-controls {
+            margin-top: 24px;
+            background: rgba(0, 29, 61, 0.8);
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .controls-title {
+            font-family: 'Orbitron', monospace;
+            font-size: 0.8rem;
+            color: var(--color-cyan);
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+
+        .control-group {
+            margin-bottom: 16px;
+        }
+
+        .control-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .control-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+            color: var(--color-text-dim);
+            margin-bottom: 8px;
+        }
+
+        .control-label span:last-child {
+            font-family: 'Orbitron', monospace;
+            color: var(--color-white);
+        }
+
+        /* Slider */
+        .slider {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: rgba(0, 0, 0, 0.5);
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--color-cyan);
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+            transition: all 0.2s ease;
+        }
+
+        .slider::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.8);
+        }
+
+        .slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--color-cyan);
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+        }
+
+        /* Toggle Switch */
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .toggle {
+            position: relative;
+            width: 60px;
+            height: 30px;
+            background: rgba(255, 51, 102, 0.3);
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid var(--color-danger);
+        }
+
+        .toggle.active {
+            background: rgba(0, 255, 136, 0.3);
+            border-color: var(--color-safe);
+        }
+
+        .toggle::before {
+            content: '';
+            position: absolute;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: var(--color-danger);
+            top: 2px;
+            left: 2px;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 10px rgba(255, 51, 102, 0.5);
+        }
+
+        .toggle.active::before {
+            left: 32px;
+            background: var(--color-safe);
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+        }
+
+        .toggle-label {
+            font-size: 0.85rem;
+            color: var(--color-text-dim);
+        }
+
+        .toggle-status {
+            font-family: 'Orbitron', monospace;
+            font-size: 0.75rem;
+            margin-left: 12px;
+        }
+
+        .toggle-status.safe {
+            color: var(--color-safe);
+        }
+
+        .toggle-status.danger {
+            color: var(--color-danger);
+        }
+
+        /* Touch Sensor Button */
+        .touch-btn {
+            width: 100%;
+            padding: 12px;
+            font-family: 'Orbitron', monospace;
+            font-size: 0.85rem;
+            letter-spacing: 1px;
+            border: 2px solid var(--color-cyan);
+            border-radius: 8px;
+            background: transparent;
+            color: var(--color-cyan);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .touch-btn:hover {
+            background: rgba(0, 212, 255, 0.1);
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+        }
+
+        .touch-btn:active {
+            background: rgba(0, 212, 255, 0.3);
+            transform: scale(0.98);
+        }
+
+        /* Serial Monitor */
+        .serial-monitor {
+            margin-top: 24px;
+            background: #0a0a0a;
+            border-radius: 12px;
+            padding: 16px;
+            border: 1px solid #333;
+        }
+
+        .serial-title {
+            font-family: 'Orbitron', monospace;
+            font-size: 0.7rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .serial-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--color-safe);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .serial-output {
+            font-family: 'Courier New', monospace;
+            font-size: 0.75rem;
+            color: #00ff88;
+            height: 150px;
+            overflow-y: auto;
+            line-height: 1.6;
+        }
+
+        .serial-output::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .serial-output::-webkit-scrollbar-track {
+            background: #111;
+        }
+
+        .serial-output::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 3px;
+        }
+
+        .log-info { color: #00ff88; }
+        .log-warning { color: #ffaa00; }
+        .log-error { color: #ff3366; }
+        .log-pump { color: #00d4ff; }
+
+        /* Footer */
+        .footer {
+            margin-top: 24px;
+            text-align: center;
+            font-size: 0.75rem;
+            color: var(--color-text-dim);
+        }
+
+        .footer a {
+            color: var(--color-cyan);
+            text-decoration: none;
+        }
+
+        /* Temperature zones indicator */
+        .temp-zones {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.65rem;
+            color: var(--color-text-dim);
+            margin-top: 6px;
+            padding: 0 2px;
+        }
+
+        .temp-zone {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .temp-zone-marker {
+            width: 3px;
+            height: 8px;
+            margin-bottom: 2px;
+            border-radius: 1px;
+        }
+
+        .temp-zone-marker.cold { background: var(--color-danger); }
+        .temp-zone-marker.cool { background: var(--color-warning); }
+        .temp-zone-marker.optimal { background: var(--color-safe); }
+        .temp-zone-marker.warm { background: var(--color-warning); }
+        .temp-zone-marker.hot { background: var(--color-danger); }
+
+        /* Water animation */
+        .water-indicator {
+            margin-top: 8px;
+            height: 4px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .water-level {
+            height: 100%;
+            width: 100%;
+            background: linear-gradient(90deg, var(--color-cyan), var(--color-safe));
+            transition: width 0.5s ease;
+        }
+
+        .water-level.empty {
+            width: 0%;
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .header h1 {
+                font-size: 1.2rem;
+            }
+            
+            .sensor-value {
+                font-size: 1.5rem;
+            }
+            
+            .pump-status {
+                font-size: 1.2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>智能鱼菜共生</h1>
+            <div class="subtitle">SMART AQUAPONICS</div>
+        </header>
+
+        <!-- Main Display Panel -->
+        <div class="display-panel">
+            <!-- Sensor Cards -->
+            <div class="sensor-grid">
+                <!-- Temperature -->
+                <div class="sensor-card" id="tempCard">
+                    <div class="sensor-label">水温 TEMP</div>
+                    <div class="sensor-value" id="tempValue">--.-<span class="sensor-unit">°C</span></div>
+                </div>
+
+                <!-- Water Level -->
+                <div class="sensor-card" id="waterCard">
+                    <div class="sensor-label">水位 LEVEL</div>
+                    <div class="sensor-value" id="waterValue">检测中</div>
+                    <div class="water-indicator">
+                        <div class="water-level" id="waterLevelBar"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pump Section -->
+            <div class="pump-section" id="pumpSection">
+                <div class="pump-label">水泵状态 PUMP STATUS</div>
+                <div class="pump-status" id="pumpStatus">已停止 OFF</div>
+            </div>
+
+            <!-- Pump Button -->
+            <button class="pump-button" id="pumpButton" onclick="startPump()">
+                启动水泵 START PUMP
+            </button>
+
+            <!-- System Message -->
+            <div class="system-message" id="systemMessage">
+                系统就绪 System Ready
+            </div>
+        </div>
+
+        <!-- Simulator Controls -->
+        <div class="simulator-controls">
+            <div class="controls-title">🎮 Simulator Controls 模拟控制</div>
+
+            <!-- Temperature Slider -->
+            <div class="control-group">
+                <div class="control-label">
+                    <span>🌡️ 模拟水温 Temperature</span>
+                    <span id="tempSliderValue">24.0°C</span>
+                </div>
+                <input type="range" class="slider" id="tempSlider" min="10" max="35" step="0.5" value="24">
+                <div class="temp-zones">
+                    <div class="temp-zone">
+                        <div class="temp-zone-marker cold"></div>
+                        <span>&lt;18°C</span>
+                    </div>
+                    <div class="temp-zone">
+                        <div class="temp-zone-marker cool"></div>
+                        <span>18-22°C</span>
+                    </div>
+                    <div class="temp-zone">
+                        <div class="temp-zone-marker optimal"></div>
+                        <span>22-26°C</span>
+                    </div>
+                    <div class="temp-zone">
+                        <div class="temp-zone-marker warm"></div>
+                        <span>26-28°C</span>
+                    </div>
+                    <div class="temp-zone">
+                        <div class="temp-zone-marker hot"></div>
+                        <span>&gt;28°C</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Water Level Toggle -->
+            <div class="control-group">
+                <div class="toggle-container">
+                    <span class="toggle-label">💧 模拟水位 Water Level</span>
+                    <div style="display: flex; align-items: center;">
+                        <div class="toggle active" id="waterToggle" onclick="toggleWaterLevel()"></div>
+                        <span class="toggle-status safe" id="waterToggleStatus">SAFE</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Touch Sensor -->
+            <div class="control-group">
+                <button class="touch-btn" onmousedown="touchSensorPress()" onmouseup="touchSensorRelease()" ontouchstart="touchSensorPress()" ontouchend="touchSensorRelease()">
+                    👆 模拟触摸传感器 Touch Sensor (按住 / Hold)
+                </button>
+            </div>
+        </div>
+
+        <!-- Serial Monitor -->
+        <div class="serial-monitor">
+            <div class="serial-title">
+                <div class="serial-dot"></div>
+                Serial Monitor @ 115200
+            </div>
+            <div class="serial-output" id="serialOutput"></div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            智能鱼菜共生系统模拟器 v1.0<br>
+            Smart Aquaponics System Simulator
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // System Configuration (from main.cpp)
+        // ============================================
+        const CONFIG = {
+            TEMP_WARNING_HIGH: 28.0,
+            TEMP_WARNING_LOW: 18.0,
+            TEMP_OPTIMAL_MIN: 22.0,
+            TEMP_OPTIMAL_MAX: 26.0,
+            PUMP_RUN_TIME: 5000,
+            TOUCH_DEBOUNCE_TIME: 200,
+            TEMP_READ_INTERVAL: 2000
+        };
+
+        // ============================================
+        // System State Variables
+        // ============================================
+        let state = {
+            temperature: 24.0,
+            temperatureValid: true,
+            waterLevelSafe: true,
+            pumpRunning: false,
+            pumpStartTime: 0,
+            touchPressed: false,
+            lastTouchTime: 0,
+            systemState: 'NORMAL'
+        };
+
+        // ============================================
+        // DOM Elements
+        // ============================================
+        const elements = {
+            tempValue: document.getElementById('tempValue'),
+            tempCard: document.getElementById('tempCard'),
+            waterValue: document.getElementById('waterValue'),
+            waterCard: document.getElementById('waterCard'),
+            waterLevelBar: document.getElementById('waterLevelBar'),
+            pumpStatus: document.getElementById('pumpStatus'),
+            pumpSection: document.getElementById('pumpSection'),
+            pumpButton: document.getElementById('pumpButton'),
+            systemMessage: document.getElementById('systemMessage'),
+            tempSlider: document.getElementById('tempSlider'),
+            tempSliderValue: document.getElementById('tempSliderValue'),
+            waterToggle: document.getElementById('waterToggle'),
+            waterToggleStatus: document.getElementById('waterToggleStatus'),
+            serialOutput: document.getElementById('serialOutput')
+        };
+
+        // ============================================
+        // Serial Log Function
+        // ============================================
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false });
+            const logClass = `log-${type}`;
+            const prefix = type === 'error' ? '!!!' : type === 'warning' ? '[!]' : type === 'pump' ? '[P]' : '>>>';
+            
+            elements.serialOutput.innerHTML += `<div class="${logClass}">[${timestamp}] ${prefix} ${message}</div>`;
+            elements.serialOutput.scrollTop = elements.serialOutput.scrollHeight;
+        }
+
+        // ============================================
+        // Initialize System
+        // ============================================
+        function init() {
+            log('========================================');
+            log('智能鱼菜共生系统 / Smart Aquaponics System');
+            log('========================================');
+            log('Initializing...');
+            log('[OK] Temperature sensor initialized');
+            log('[OK] Input pins configured');
+            log('[OK] Water pump initialized (OFF for safety)');
+            log('[OK] Display initialized');
+            log('========================================');
+            log('System Ready! / 系统就绪!');
+            log('========================================');
+            
+            // Set initial values
+            updateTemperatureDisplay();
+            updateWaterLevelDisplay();
+            updatePumpDisplay();
+            
+            // Start main loop
+            setInterval(mainLoop, 100);
+        }
+
+        // ============================================
+        // Main Loop (simulates Arduino loop())
+        // ============================================
+        function mainLoop() {
+            checkWaterLevel();
+            
+            if (!state.waterLevelSafe) {
+                return;
+            }
+            
+            checkPumpTimer();
+            updateDisplays();
+        }
+
+        // ============================================
+        // Temperature Slider Handler
+        // ============================================
+        elements.tempSlider.addEventListener('input', (e) => {
+            state.temperature = parseFloat(e.target.value);
+            elements.tempSliderValue.textContent = `${state.temperature.toFixed(1)}°C`;
+            updateTemperatureDisplay();
+            checkTemperatureAlarms();
+        });
+
+        // ============================================
+        // Water Level Toggle
+        // ============================================
+        function toggleWaterLevel() {
+            state.waterLevelSafe = !state.waterLevelSafe;
+            
+            if (state.waterLevelSafe) {
+                elements.waterToggle.classList.add('active');
+                elements.waterToggleStatus.textContent = 'SAFE';
+                elements.waterToggleStatus.className = 'toggle-status safe';
+                log('[OK] Water level restored / 水位恢复正常');
+            } else {
+                elements.waterToggle.classList.remove('active');
+                elements.waterToggleStatus.textContent = 'EMPTY';
+                elements.waterToggleStatus.className = 'toggle-status danger';
+            }
+            
+            updateWaterLevelDisplay();
+        }
+
+        // ============================================
+        // Touch Sensor Simulation
+        // ============================================
+        function touchSensorPress() {
+            const currentTime = Date.now();
+            
+            if (!state.touchPressed && (currentTime - state.lastTouchTime >= CONFIG.TOUCH_DEBOUNCE_TIME)) {
+                state.touchPressed = true;
+                log('[TOUCH] Sensor activated / 触摸传感器激活');
+                
+                if (state.waterLevelSafe && !state.pumpRunning) {
+                    startPump();
+                } else if (state.pumpRunning) {
+                    log('[PUMP] Already running / 水泵已在运行', 'warning');
+                } else if (!state.waterLevelSafe) {
+                    log('[PUMP] Cannot start - no water! / 无法启动-无水!', 'error');
+                }
+                
+                state.lastTouchTime = currentTime;
+            }
+        }
+
+        function touchSensorRelease() {
+            state.touchPressed = false;
+        }
+
+        // ============================================
+        // Pump Control
+        // ============================================
+        function startPump() {
+            if (!state.waterLevelSafe) {
+                log('!!! Cannot start pump - NO WATER !!!', 'error');
+                updateSystemMessage('警报:请加水! ALARM:ADD WATER!', 'danger');
+                return;
+            }
+            
+            if (state.pumpRunning) {
+                return;
+            }
+            
+            state.pumpRunning = true;
+            state.pumpStartTime = Date.now();
+            state.systemState = 'PUMP_RUNNING';
+            
+            log('[PUMP] Started for 5 seconds / 启动5秒', 'pump');
+            
+            updatePumpDisplay();
+            updateSystemMessage('水泵运行中 Pump Running', 'cyan');
+        }
+
+        function stopPump() {
+            state.pumpRunning = false;
+            state.systemState = 'NORMAL';
+            
+            log('[PUMP] Stopped (5 seconds elapsed) / 已停止（5秒已过）', 'pump');
+            
+            updatePumpDisplay();
+            updateSystemMessage('水泵已停止 Pump Stopped', 'safe');
+        }
+
+        // ============================================
+        // Check Functions
+        // ============================================
+        function checkWaterLevel() {
+            if (!state.waterLevelSafe) {
+                if (state.pumpRunning) {
+                    state.pumpRunning = false;
+                    log('!!! EMERGENCY PUMP SHUTOFF - NO WATER !!!', 'error');
+                }
+                
+                state.systemState = 'ALARM_NO_WATER';
+                updateWaterLevelDisplay();
+                updatePumpDisplay();
+                updateSystemMessage('警报:请加水! ALARM:ADD WATER!', 'danger');
+            }
+        }
+
+        function checkPumpTimer() {
+            if (state.pumpRunning) {
+                const elapsed = Date.now() - state.pumpStartTime;
+                
+                if (elapsed >= CONFIG.PUMP_RUN_TIME) {
+                    stopPump();
+                } else {
+                    const remaining = Math.ceil((CONFIG.PUMP_RUN_TIME - elapsed) / 1000);
+                    updatePumpDisplay(remaining);
+                }
+            }
+        }
+
+        function checkTemperatureAlarms() {
+            if (state.temperature > CONFIG.TEMP_WARNING_HIGH) {
+                if (state.systemState !== 'PUMP_RUNNING') {
+                    state.systemState = 'ALARM_TEMP_HIGH';
+                    updateSystemMessage('警告:温度过高! TEMP HIGH!', 'warning');
+                    log(`[TEMP] Warning: High temperature ${state.temperature}°C`, 'warning');
+                }
+            } else if (state.temperature < CONFIG.TEMP_WARNING_LOW) {
+                if (state.systemState !== 'PUMP_RUNNING') {
+                    state.systemState = 'ALARM_TEMP_LOW';
+                    updateSystemMessage('警告:温度过低! TEMP LOW!', 'warning');
+                    log(`[TEMP] Warning: Low temperature ${state.temperature}°C`, 'warning');
+                }
+            } else if (state.systemState === 'ALARM_TEMP_HIGH' || state.systemState === 'ALARM_TEMP_LOW') {
+                state.systemState = 'NORMAL';
+                updateSystemMessage('温度正常 Temp Normal', 'safe');
+                log(`[TEMP] ${state.temperature}°C - Normal range`);
+            }
+        }
+
+        // ============================================
+        // Display Update Functions
+        // ============================================
+        function updateTemperatureDisplay() {
+            const temp = state.temperature;
+            elements.tempValue.innerHTML = `${temp.toFixed(1)}<span class="sensor-unit">°C</span>`;
+            
+            // Set color based on temperature
+            elements.tempCard.className = 'sensor-card';
+            elements.tempValue.className = 'sensor-value';
+            
+            if (temp > CONFIG.TEMP_WARNING_HIGH || temp < CONFIG.TEMP_WARNING_LOW) {
+                elements.tempCard.classList.add('danger');
+                elements.tempValue.classList.add('danger');
+            } else if (temp >= CONFIG.TEMP_OPTIMAL_MIN && temp <= CONFIG.TEMP_OPTIMAL_MAX) {
+                // Optimal - green (default)
+            } else {
+                elements.tempCard.classList.add('warning');
+                elements.tempValue.classList.add('warning');
+            }
+        }
+
+        function updateWaterLevelDisplay() {
+            elements.waterCard.className = 'sensor-card';
+            elements.waterValue.className = 'sensor-value';
+            
+            if (state.waterLevelSafe) {
+                elements.waterValue.textContent = '安全 SAFE';
+                elements.waterLevelBar.classList.remove('empty');
+            } else {
+                elements.waterValue.textContent = '危险! DANGER!';
+                elements.waterValue.classList.add('danger');
+                elements.waterCard.classList.add('danger');
+                elements.waterLevelBar.classList.add('empty');
+            }
+        }
+
+        function updatePumpDisplay(remainingSeconds = 0) {
+            elements.pumpSection.className = 'pump-section';
+            elements.pumpStatus.className = 'pump-status';
+            elements.pumpButton.className = 'pump-button';
+            
+            if (state.pumpRunning) {
+                elements.pumpStatus.textContent = `运行中 ${remainingSeconds}s`;
+                elements.pumpStatus.classList.add('running');
+                elements.pumpSection.classList.add('running');
+                elements.pumpButton.textContent = '运行中 RUNNING';
+                elements.pumpButton.classList.add('running');
+                elements.pumpButton.disabled = true;
+            } else {
+                elements.pumpStatus.textContent = '已停止 OFF';
+                elements.pumpButton.textContent = '启动水泵 START PUMP';
+                elements.pumpButton.disabled = !state.waterLevelSafe;
+            }
+        }
+
+        function updateSystemMessage(message, type = 'safe') {
+            elements.systemMessage.textContent = message;
+            elements.systemMessage.className = `system-message ${type}`;
+        }
+
+        function updateDisplays() {
+            // Periodic display updates
+        }
+
+        // ============================================
+        // Initialize on page load
+        // ============================================
+        window.onload = init;
+    </script>
+</body>
+</html>
+
