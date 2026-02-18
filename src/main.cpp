@@ -18,6 +18,7 @@
 #include <Arduino.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
+#include "serial_protocol.h"
 
 // ==================== 引脚定义 ====================
 #define PIN_LIQUID_LEVEL    4     // 水位: LOW=危险, HIGH=安全
@@ -141,6 +142,9 @@ void setup() {
   tempSensor.setResolution(12);
   Serial.println("[OK] DS18B20 initialized");
   
+  // 串口通信（用于1.85C-box）
+  initSerialProtocol();
+  
   readWaterLevel();
   tidalCycleStart = millis();
   
@@ -175,6 +179,68 @@ void loop() {
   // 流量监测
   if (pumpRunning) {
     calculateFlowRate();
+  }
+  
+  // 串口通信：检查并处理来自1.85C-box的命令
+  checkAndParseCommands();
+  
+  // 串口通信：定期发送系统状态数据（每200ms）
+  static unsigned long lastSerialSend = 0;
+  unsigned long now = millis();
+  if (now - lastSerialSend >= 200) {
+    // 发送系统状态
+    SystemStatus sysStatus;
+    sysStatus.waterLevelSafe = waterLevelSafe;
+    sysStatus.tempAlarm = tempAlarm;
+    sysStatus.pumpRunning = pumpRunning;
+    sysStatus.manualModeActive = manualModeActive;
+    sysStatus.tidalModeActive = tidalPumpOn;
+    
+    // 确定当前优先级
+    if (!waterLevelSafe) {
+      sysStatus.currentPriority = 1;  // Level 1: 干烧保护
+    } else if (tempAlarm) {
+      sysStatus.currentPriority = 2;  // Level 2: 温度监控
+    } else if (manualModeActive) {
+      sysStatus.currentPriority = 3;  // Level 3: 手动控制
+    } else if (tidalPumpOn) {
+      sysStatus.currentPriority = 4;  // Level 4: 潮汐循环
+    } else {
+      sysStatus.currentPriority = 0;  // 空闲
+    }
+    
+    sendSystemStatus(sysStatus);
+    
+    // 发送温度数据
+    sendTemperature(currentTemperature, tempValid);
+    
+    // 发送水位状态
+    sendWaterLevel(waterLevelSafe);
+    
+    // 发送流量数据
+    sendFlowRate(flowRate);
+    
+    // 发送水泵状态
+    PumpStatus pumpStatus;
+    pumpStatus.running = pumpRunning;
+    pumpStatus.power = pumpPower;
+    pumpStatus.isManual = manualModeActive;
+    
+    if (manualModeActive) {
+      unsigned long elapsed = now - manualStartTime;
+      pumpStatus.remainingTime = (MANUAL_PUMP_TIME > elapsed) ? (MANUAL_PUMP_TIME - elapsed) : 0;
+    } else if (tidalPumpOn) {
+      unsigned long elapsed = now - tidalCycleStart;
+      unsigned long total = TIDAL_ON_TIME + TIDAL_OFF_TIME;
+      unsigned long pos = elapsed % total;
+      pumpStatus.remainingTime = (pos < TIDAL_ON_TIME) ? (TIDAL_ON_TIME - pos) : 0;
+    } else {
+      pumpStatus.remainingTime = 0;
+    }
+    
+    sendPumpStatus(pumpStatus);
+    
+    lastSerialSend = now;
   }
   
   delay(10);
